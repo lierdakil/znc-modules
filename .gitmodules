@@ -1,0 +1,4 @@
+[submodule "znc-push"]
+	path = znc-push
+	url = git@github.com:lierdakil/znc-push.git
+	branch = pushbullet
