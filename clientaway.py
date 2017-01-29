@@ -57,13 +57,18 @@ class clientaway(znc.Module):
 
         self.PutModule("{} clients have been set away".format(count))
 
-    def __init__(self):
-        super().__init__()
-        self.AddHelpCommand()
-        self.AddCommand("List", self.ListCommand, "", "List all clients")
-        self.AddCommand("Reason", self.SetAwayReasonCommand, "[reason]", "Prints and optionally sets the away reason.")
-        self.AddCommand("AutoAway", self.AutoAwayCommand, "yes or no", "Should we auto away you when the last client goes away or disconnects")
-        self.AddCommand("SetAway", self.SetAwayCommand, "hostname", "Set any clients matching hostname as away/unaway")
+    def onModCommand(self, scmd):
+        toks = scmd.s.split()
+        cmd = toks[0].lower()
+        args = toks[1:]
+        if cmd == 'list':
+            self.ListCommand('')
+        elif cmd == 'reason':
+            self.SetAwayReasonCommand(' '.join(args))
+        elif cmd == 'autoaway':
+            self.AutoAwayCommand(args[0])
+        elif cmd == 'setaway':
+            self.SetAwayCommand(args[0])
 
     def OnClientLogin(self):
         if self.GetAutoAway() and self.GetNetwork() and self.GetNetwork().IsIRCAway():
