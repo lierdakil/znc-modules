@@ -3,6 +3,8 @@ import sys
 from inspect import signature
 
 AWAY_DEFAULT_REASON = "Auto away at %time%"
+TRUE_VALS = ['true', '1', 't', 'y', 'yes']
+FALSE_VALS = ['false', '0', 'f', 'n', 'no']
 
 class clientaway(znc.Module):
     description = "Example python3 module for ZNC"
@@ -17,7 +19,7 @@ class clientaway(znc.Module):
         return self.ExpandString(sAway)
 
     def GetAutoAway(self):
-        return self.GetNV("autoaway") in ['true', '1', 't', 'y', 'yes']
+        return self.GetNV("autoaway") in TRUE_VALS
 
     def cmd_list(self):
         '''List clients and their away status'''
@@ -26,7 +28,6 @@ class clientaway(znc.Module):
         output = ['{}\t{}\t{}'.format('Host','Network','Away')]
 
         for client in clients:
-            #output.append('{}\t{}\t{}'.format(client.GetRemoteIP(),client.GetNetwork().GetName(),client.GetAway()))
             output.append('{}\t{}\t{}'.format(client.GetRemoteIP(),client.GetNetwork().GetName(),client.IsAway()))
 
         self.PutModule('\n'.join(output))
@@ -58,7 +59,7 @@ class clientaway(znc.Module):
 
         for client in clients:
             if client.GetRemoteIP() == sHostname:
-                self.setClientAway(sAwayState not in ['false', 'no', '0', 'f', 'n'], client)
+                self.setClientAway(sAwayState not in FALSE_VALS, client)
                 count+=1
 
         self.PutModule("{} clients have been modified".format(count))
@@ -112,7 +113,7 @@ class clientaway(znc.Module):
     def setClientAway(self, bState, client=None):
         if not client:
             client = self.GetClient()
-        if bState:
+        if not bState:
             client.SetAway(False)
             client.PutClient(":irc.znc.in 305 {} :[Client] You are no longer marked as being away".format(client.GetNick()))
 
