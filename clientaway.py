@@ -96,7 +96,7 @@ class clientaway(znc.Module):
                 self.GetClient().PutClient(":irc.znc.in 306 {} :[Client] You have been marked as being away".format(self.GetClient().GetNick()))
 
                 if self.GetAutoAway() and self.GetNetwork() and not self.GetNetwork().IsIRCAway() and not self.GetNetwork().IsUserOnline():
-                    self.PutIRC("AWAY :{}".format(sAwayReason))
+                    self.PutIRC("AWAY :{}".format(self.GetAwayReason()))
 
             return znc.HALTCORE
 
