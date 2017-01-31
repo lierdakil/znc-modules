@@ -132,7 +132,7 @@ class clientaway(znc.Module):
         sAwayReason = ' '.join(sLine.s.split()[1:])
 
         if sCmd.lower() == "away":
-            self.setClientAway(not sAwayReason)
+            self.setClientAway(sAwayReason)
             return znc.HALTCORE
 
         return znc.CONTINUE
