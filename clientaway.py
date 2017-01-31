@@ -1,5 +1,6 @@
 import znc
 import sys
+from inspect import signature
 
 AWAY_DEFAULT_REASON = "Auto away at %time%"
 
@@ -18,7 +19,8 @@ class clientaway(znc.Module):
     def GetAutoAway(self):
         return self.GetNV("autoaway") in ['true', '1', 't', 'y', 'yes']
 
-    def ListCommand(self):
+    def cmd_list(self):
+        '''List clients and their away status'''
         clients = self.GetUser().GetAllClients()
 
         output = ['{}\t{}\t{}'.format('Host','Network','Away')]
@@ -29,14 +31,17 @@ class clientaway(znc.Module):
 
         self.PutModule('\n'.join(output))
 
-    def SetAwayReasonCommand(self, reason):
+    def cmd_reason(self, *args):
+        '''Set away reason'''
+        reason = ' '.join(args)
         if reason:
             self.SetNV("reason", reason)
             self.PutModule("Away reason set to [{}]".format(reason))
 
         self.PutModule("Away message will be expanded to [{}]".format(self.GetAwayReason()))
 
-    def AutoAwayCommand(self, message=''):
+    def cmd_autoaway(self, message=''):
+        '''Enable or disable autoaway'''
         if message:
             self.SetNV("autoaway", message)
 
@@ -45,33 +50,52 @@ class clientaway(znc.Module):
         else:
             self.PutModule("Auto away when last client goes away or disconnects disabled.")
 
-    def SetAwayCommand(self, sHostname):
+    def cmd_setaway(self, sHostname, sAwayState=''):
+        '''Set away status for a client'''
         clients = self.GetUser().GetAllClients()
 
         count = 0
 
         for client in clients:
             if client.GetRemoteIP() == sHostname:
-                client.SetAway(True)
+                self.setClientAway(sAwayState not in ['false', 'no', '0', 'f', 'n'], client)
                 count+=1
 
-        self.PutModule("{} clients have been set away".format(count))
+        self.PutModule("{} clients have been modified".format(count))
+
+    def cmd_help(self):
+        '''Show this help'''
+        cmds = [x[4:] for x in dir(self) if x.startswith('cmd_')]
+        for cmd in cmds:
+            self.PutModule('{}: {}'.format(cmd, getattr(self, 'cmd_'+cmd, None).__doc__))
 
     def OnModCommand(self, scmd):
         try:
             toks = scmd.split()
-            cmd = toks[0].lower()
+            pCommand = toks[0].lower()
             args = toks[1:]
-            if cmd == 'list':
-                self.ListCommand()
-            elif cmd == 'reason':
-                self.SetAwayReasonCommand(' '.join(args))
-            elif cmd == 'autoaway':
-                self.AutoAwayCommand(*args)
-            elif cmd == 'setaway':
-                self.SetAwayCommand(*args)
         except:
-            self.PutModule(str(sys.exc_info()[1]))
+            self.PutModule('Invalid command {}'.format(scmd))
+            return znc.CONTINUE
+
+
+        if not pCommand:
+            self.PutModule('No command')
+            return znc.CONTINUE
+
+        method = getattr(self, 'cmd_' + pCommand.lower(), None)
+
+        if method is None:
+            self.PutModule('Invalid command {}'.format(pCommand))
+            return znc.CONTINUE
+
+        try:
+            method(*args)
+        except TypeError as e:
+            self.PutModule('Usage: {}{}\n{}'.format(pCommand, signature(method), e))
+            return znc.CONTINUE
+
+        return znc.CONTINUE
 
     def OnClientLogin(self):
         if self.GetAutoAway() and self.GetNetwork() and self.GetNetwork().IsIRCAway():
@@ -85,25 +109,29 @@ class clientaway(znc.Module):
         if self.GetAutoAway() and not self.GetNetwork().IsUserOnline():
             self.PutIRC("AWAY :{}".format(self.GetAwayReason()))
 
+    def setClientAway(self, bState, client=None):
+        if not client:
+            client = self.GetClient()
+        if bState:
+            client.SetAway(False)
+            client.PutClient(":irc.znc.in 305 {} :[Client] You are no longer marked as being away".format(client.GetNick()))
+
+            if self.GetNetwork():
+                if self.GetAutoAway() and self.GetNetwork().IsIRCAway():
+                    self.PutIRC("AWAY")
+        else:
+            client.SetAway(True)
+            client.PutClient(":irc.znc.in 306 {} :[Client] You have been marked as being away".format(client.GetNick()))
+
+            if self.GetAutoAway() and self.GetNetwork() and not self.GetNetwork().IsIRCAway() and not self.GetNetwork().IsUserOnline():
+                self.PutIRC("AWAY :{}".format(self.GetAwayReason()))
+
     def OnUserRaw(self, sLine):
         sCmd = sLine.s.split()[0]
         sAwayReason = ' '.join(sLine.s.split()[1:])
 
         if sCmd.lower() == "away":
-            if not sAwayReason:
-                self.GetClient().SetAway(False)
-                self.GetClient().PutClient(":irc.znc.in 305 {} :[Client] You are no longer marked as being away".format(self.GetClient().GetNick()))
-
-                if self.GetNetwork():
-                    if self.GetAutoAway() and self.GetNetwork().IsIRCAway():
-                        self.PutIRC("AWAY")
-            else:
-                self.GetClient().SetAway(True)
-                self.GetClient().PutClient(":irc.znc.in 306 {} :[Client] You have been marked as being away".format(self.GetClient().GetNick()))
-
-                if self.GetAutoAway() and self.GetNetwork() and not self.GetNetwork().IsIRCAway() and not self.GetNetwork().IsUserOnline():
-                    self.PutIRC("AWAY :{}".format(self.GetAwayReason()))
-
+            self.setClientAway(not sAwayReason)
             return znc.HALTCORE
 
         return znc.CONTINUE
