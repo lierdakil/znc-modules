@@ -90,7 +90,7 @@ class clientaway(znc.Module):
 
                 if self.GetNetwork():
                     if self.GetAutoAway() and self.GetNetwork().IsIRCAway():
-                         self.PutIRC("AWAY")
+                        self.PutIRC("AWAY")
             else:
                 self.GetClient().SetAway(True)
                 self.GetClient().PutClient(":irc.znc.in 306 {} :[Client] You have been marked as being away".format(self.GetClient().GetNick()))
