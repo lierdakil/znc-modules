@@ -117,15 +117,15 @@ class clientaway(znc.Module):
             client.SetAway(False)
             client.PutClient(":irc.znc.in 305 {} :[Client] You are no longer marked as being away".format(client.GetNick()))
 
-            if self.GetNetwork():
-                if self.GetAutoAway() and self.GetNetwork().IsIRCAway():
-                    self.PutIRC("AWAY")
+            if client.GetNetwork():
+                if self.GetAutoAway() and client.GetNetwork().IsIRCAway():
+                    client.PutIRC("AWAY")
         else:
             client.SetAway(True)
             client.PutClient(":irc.znc.in 306 {} :[Client] You have been marked as being away".format(client.GetNick()))
 
-            if self.GetAutoAway() and self.GetNetwork() and not self.GetNetwork().IsIRCAway() and not self.GetNetwork().IsUserOnline():
-                self.PutIRC("AWAY :{}".format(self.GetAwayReason()))
+            if self.GetAutoAway() and client.GetNetwork() and not client.GetNetwork().IsIRCAway() and not client.GetNetwork().IsUserOnline():
+                client.PutIRC("AWAY :{}".format(self.GetAwayReason()))
 
     def OnUserRaw(self, sLine):
         sCmd = sLine.s.split()[0]
