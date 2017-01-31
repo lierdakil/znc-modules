@@ -18,7 +18,7 @@ from datetime import datetime
 from inspect import signature
 
 def cmp(a, b):
-    return (a > b) - (a < b) 
+    return (a > b) - (a < b)
 
 class backlog(znc.Module):
     description = "Example python3 module for ZNC"
@@ -33,7 +33,7 @@ class backlog(znc.Module):
         message = str(message)
         self.logstore.execute(
             '''INSERT INTO "log" ("who", "where", "message", "type")
-               VALUES (?,?,?,?)''', 
+               VALUES (?,?,?,?)''',
                (who, where, message, typ))
         self.logstore.commit()
 
@@ -47,13 +47,13 @@ class backlog(znc.Module):
                 return False
             rx = re.compile(re.escape(template.lower()).replace("_", ".").replace("\\%", ".*?"))
             return rx.match(x.lower()) != None
-              
+
         def sqlite_nocase_collation(a, b):
             return cmp(a.lower(), b.lower())
-        
+
         def sqlite_lower(x):
             return x.lower()
-          
+
         def sqlite_upper(x):
             return x.upper()
 
@@ -62,7 +62,7 @@ class backlog(znc.Module):
 
         c.create_function("LIKE", 2, sqlite_like)
         c.create_function("LOWER", 1, sqlite_lower)
-        c.create_function("UPPER", 1, sqlite_upper) 
+        c.create_function("UPPER", 1, sqlite_upper)
         # end
         c.execute(
            '''CREATE TABLE IF NOT EXISTS "log"
@@ -83,19 +83,19 @@ class backlog(znc.Module):
     def OnChanMsg(self, nick, channel, message):
         self.log(nick, channel, message.s)
         return znc.CONTINUE
-    
+
     def OnChanAction(self, nick, channel, message):
         self.log(nick, channel, message.s, 'ACTION')
         return znc.CONTINUE
-    
+
     def OnPrivMsg(self, nick, message):
         self.log(nick, nick, message.s)
         return znc.CONTINUE
-    
+
     def OnPrivAction(self, nick, message):
         self.log(nick, nick, message.s, 'ACTION')
         return znc.CONTINUE
-    
+
     def OnUserMsg(self, tgt, message):
         try:
             command = StringStart() + Suppress(CaselessLiteral('!bl')) + Optional(Word(nums)) + StringEnd()
@@ -109,11 +109,11 @@ class backlog(znc.Module):
             return znc.HALT
         self.log(None, tgt, message.s)
         return znc.CONTINUE
-    
+
     def OnUserAction(self, tgt, message):
         self.log(None, tgt, message.s, 'ACTION')
         return znc.CONTINUE
-    
+
     def OnModCommand(self, message):
         """Dispatches messages sent to module to command functions."""
 
@@ -121,30 +121,30 @@ class backlog(znc.Module):
         arguments = ZeroOrMore(argument)
         command = Word(alphas)
         kwarg = command+Suppress(Optional(Literal('=')))+argument
-        kwargs = Suppress(Literal('--')) + ZeroOrMore(kwarg.setParseAction(lambda t: tuple(t)))
+        kwargs = Suppress(Literal('--')) + ZeroOrMore(kwarg.setParseAction(tuple))
         commandWithArgs = StringStart() + command + Group(arguments) + Group(Optional(kwargs)) + StringEnd()
 
         try:
-            command, args, kw = commandWithArgs.parseString(message)
+            pCommand, args, kw = commandWithArgs.parseString(message)
         except ParseException as e:
             self.PutModule('Invalid command {}'.format(e))
             return znc.CONTINUE
 
 
-        if not command:
+        if not pCommand:
             self.PutModule('No command')
             return znc.CONTINUE
 
-        method = getattr(self, 'cmd_' + command.lower(), None)
+        method = getattr(self, 'cmd_' + pCommand.lower(), None)
 
         if method is None:
-            self.PutModule('Invalid command {}'.format(command))
+            self.PutModule('Invalid command {}'.format(pCommand))
             return znc.CONTINUE
 
         try:
             method(*args, **dict(list(kw)))
         except TypeError as e:
-            self.PutModule('Usage: {}{}\n{}'.format(command, signature(method), e))
+            self.PutModule('Usage: {}{}\n{}'.format(pCommand, signature(method), e))
             return znc.CONTINUE
 
         return znc.CONTINUE
@@ -224,13 +224,13 @@ class backlog(znc.Module):
         datetime = Val(Regex(r'\d{4}-\d{2}-d{2}(T|\s+)\d{2}:\d{2}:\d{2}'))
         nowLit = CaselessKeyword('now').setParseAction(replaceWith('''datetime('now', 'localtime')'''))
         timeop = time | datetime | nowLit
-        
+
         datecol = CaselessKeyword('time').setParseAction(replaceWith('''date("time", 'localtime')'''))
         todayLit = CaselessKeyword('today').setParseAction(replaceWith('''date('now', 'localtime')'''))
         yesterdayLit = CaselessKeyword('yesterday').setParseAction(replaceWith('''date('now', 'localtime', '-1 day')'''))
         date = Val(Regex(r'\d{4}-\d{2}-\d{2}'))
         dateop = date | todayLit | yesterdayLit
-        
+
         timecomp = timecol + binOpLit + timeop | timecol + betweenLit + timeop + andLit + timeop
         datecomp = datecol + binOpLit + dateop | datecol + betweenLit + dateop + andLit + dateop
         gquery = StringStart() + ZeroOrMore(Group(comparison | timecomp | datecomp)) + StringEnd()
