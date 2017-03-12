@@ -221,13 +221,13 @@ class backlog(znc.Module):
 
         timecol = CaselessKeyword('time').setParseAction(replaceWith('''datetime("time", 'localtime')'''))
         time = Val(Regex(r'\d{2}:\d{2}(:\d{2})?'),phfmt('''datetime(date('now','localtime'), ?)'''))
-        datetime = Val(Regex(r'\d{4}-\d{2}-d{2}(T|\s+)\d{2}:\d{2}:\d{2}'))
+        datetime = Val(Regex(r'\d{4}-\d{2}-\d{2}(\s+\d{2}(:\d{2}(:\d{2})?)?)?'))
         nowLit = CaselessKeyword('now').setParseAction(replaceWith('''datetime('now', 'localtime')'''))
-        timeop = time | datetime | nowLit
-
-        datecol = CaselessKeyword('time').setParseAction(replaceWith('''date("time", 'localtime')'''))
         todayLit = CaselessKeyword('today').setParseAction(replaceWith('''date('now', 'localtime')'''))
         yesterdayLit = CaselessKeyword('yesterday').setParseAction(replaceWith('''date('now', 'localtime', '-1 day')'''))
+        timeop = time | datetime | nowLit | todayLit | yesterdayLit
+
+        datecol = CaselessKeyword('date').setParseAction(replaceWith('''date("time", 'localtime')'''))
         date = Val(Regex(r'\d{4}-\d{2}-\d{2}'))
         dateop = date | todayLit | yesterdayLit
 
@@ -236,6 +236,30 @@ class backlog(znc.Module):
         gquery = StringStart() + ZeroOrMore(Group(comparison | timecomp | datecomp)) + StringEnd()
         if query == 'help':
             self.PutModule(str(gquery))
+            self.PutModule("""
+Example: search (where=username time=2015-01-03 20:00)
+Fields:
+- time = YYYY-MM-DD HH:MM:SS | HH:MM:SS | now | today | yesterday
+- date = YYYY-MM-DD | today | yesterday
+- who
+- where
+- type
+- message
+Time can omit some components, those will be assumed to be 0.
+Values (except time) can be specified in single quotes
+difference between time and date is that time=today will search for time=YYYY-MM-DD 00:00:00, while date will ignore time component
+Operators:
+- !=
+- =
+- >
+- <
+- >=
+- <=
+- <>
+- like
+- ~ (not supported for date)
+like implements pure sql like. tilde will enclose value in %
+""")
             return
         try:
             parsed = gquery.parseString(query)
