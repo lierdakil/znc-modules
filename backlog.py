@@ -206,17 +206,18 @@ class backlog(znc.Module):
         def Val(e, pa=phfmt()):
             return e.setParseAction(pa)
 
+        quotedStr = QuotedString(quoteChar='\'', escChar='\\', unquoteResults=True) | QuotedString(quoteChar='\"', escChar='\\', unquoteResults=True)
         column = MatchFirst(map(CaselessKeyword, cols[2:])).setParseAction(quoteStr) \
                 | Val(CaselessKeyword("who"),replaceWith(('''COALESCE("who", ?)''', self.GetNetwork().GetNick())))
         number = Word(nums).setParseAction(lambda t: int(t[0]))
-        word = Regex(r'\w+')
-        operand = Val(number | sglQuotedString | word)
+        word = Regex(r'\S+')
+        operand = Val(number | quotedStr | word)
         binOpLit = oneOf('!= = > < >= <= <>') | CaselessKeyword('like')
         binOp = column + binOpLit + operand
         betweenLit = CaselessKeyword('between')
         andLit = CaselessKeyword('and')
         betweenOp = column + betweenLit + operand + andLit + operand
-        tildeOp = column + Literal('~').setParseAction(replaceWith('like')) + Val( sglQuotedString | word, phfmt(fmt='%{}%'))
+        tildeOp = column + Literal('~').setParseAction(replaceWith('like')) + Val( quotedStr | word, phfmt(fmt='%{}%'))
         comparison = binOp | betweenOp | tildeOp
 
         timecol = CaselessKeyword('time').setParseAction(replaceWith('''datetime("time", 'localtime')'''))
@@ -302,6 +303,9 @@ type can be ACTION.
             rowd = dict(zip(cols, row))
             if rowd['who'] is None:
                 rowd['who'] = self.GetNetwork().GetNick()
-            self.PutModule("{where} [{time}] <{who}>: {message}".format(**rowd));
+            if rowd['type'] == 'ACTION':
+                self.PutModule("{where} [{time}] {who} {message}".format(**rowd));
+            else:
+                self.PutModule("{where} [{time}] <{who}>: {message}".format(**rowd));
         if not results:
             self.PutModule('No results')
