@@ -265,6 +265,10 @@ class backlog(znc.Module):
         except sqlite3.ProgrammingError as e:
             self.PutModule('Invalid query {}\n{}\n{}'.format(query_sql,vals,e))
             return
+        except sqlite3.IntegrityError as e:
+            self.PutModule('Invalid query {}\n{}\n{}'.format(query_sql,vals,e))
+            return
+
         if debug:
             self.PutModule('Debug: {}\n{}'.format(query_sql, vals))
         results = False
