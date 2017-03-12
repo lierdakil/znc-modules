@@ -259,6 +259,7 @@ Operators:
 - like
 - ~ (not supported for date)
 like implements pure sql like. tilde will enclose value in %
+type can be ACTION.
 """)
             return
         try:
